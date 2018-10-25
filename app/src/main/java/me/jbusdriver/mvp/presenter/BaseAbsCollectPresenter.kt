@@ -1,24 +1,26 @@
 package me.jbusdriver.mvp.presenter
 
 import io.reactivex.Flowable
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.rxkotlin.addTo
 import io.reactivex.rxkotlin.subscribeBy
-import me.jbusdriver.common.KLog
-import me.jbusdriver.common.SchedulersCompat
+import io.reactivex.schedulers.Schedulers
+import me.jbusdriver.base.KLog
+import me.jbusdriver.base.SchedulersCompat
+import me.jbusdriver.base.mvp.BaseView
+import me.jbusdriver.base.mvp.model.BaseModel
 import me.jbusdriver.db.bean.*
 import me.jbusdriver.db.service.CategoryService
 import me.jbusdriver.db.service.LinkService
 import me.jbusdriver.mvp.ActressCollectContract
-import me.jbusdriver.mvp.BaseView
 import me.jbusdriver.mvp.MovieCollectContract
 import me.jbusdriver.mvp.bean.*
-import me.jbusdriver.mvp.model.BaseModel
 import me.jbusdriver.mvp.model.CollectModel
 import me.jbusdriver.ui.data.AppConfiguration
 import org.jsoup.nodes.Document
 
 
-abstract class BaseAbsCollectPresenter<V : BaseView.BaseListWithRefreshView, T : ICollectCategory> : AbstractRefreshLoadMorePresenterImpl<V, T>(), BasePresenter.BaseCollectPresenter<T> {
+abstract class BaseAbsCollectPresenter<V : BaseView.BaseListWithRefreshView, T : ICollectCategory> : AbstractRefreshLoadMorePresenterImpl<V, T>(),BaseCollectPresenter<T> {
 
 
     protected open val pageSize = 20
@@ -39,7 +41,7 @@ abstract class BaseAbsCollectPresenter<V : BaseView.BaseListWithRefreshView, T :
 
     override val collectGroupMap: MutableMap<Category, List<T>> = mutableMapOf()
 
-    override val adapterDelegate: BasePresenter.BaseCollectPresenter.CollectMultiTypeDelegate<T> = BasePresenter.BaseCollectPresenter.CollectMultiTypeDelegate()
+    override val adapterDelegate: BaseCollectPresenter.CollectMultiTypeDelegate<T> = BaseCollectPresenter.CollectMultiTypeDelegate()
 
 
     private fun load() = when {
@@ -78,6 +80,8 @@ abstract class BaseAbsCollectPresenter<V : BaseView.BaseListWithRefreshView, T :
                     .toList()
                     .doOnSubscribe { mView?.showLoading() }
                     .doAfterTerminate { mView?.dismissLoading() }
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
                     .subscribeBy({
                         mView?.showError(it)
                     }, {
@@ -119,7 +123,7 @@ abstract class BaseAbsCollectPresenter<V : BaseView.BaseListWithRefreshView, T :
     }
 
     override fun onRefresh() {
-        pageInfo = PageInfo()
+        //   pageInfo = PageInfo()
 //        listData.clear()
 //        collector.reload()
 //        listData.addAll(collector.dataList)
@@ -137,7 +141,7 @@ abstract class BaseAbsCollectPresenter<V : BaseView.BaseListWithRefreshView, T :
     override val model: BaseModel<Int, Document>
         get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
 
-    override fun stringMap(str: Document): List<T> {
+    override fun stringMap(page: PageInfo, str: Document): List<T> {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 

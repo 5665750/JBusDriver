@@ -1,9 +1,9 @@
 package me.jbusdriver.ui.data.contextMenu
 
+import me.jbusdriver.base.KLog
+import me.jbusdriver.base.copy
+import me.jbusdriver.base.toast
 import me.jbusdriver.common.JBus
-import me.jbusdriver.common.KLog
-import me.jbusdriver.common.copy
-import me.jbusdriver.common.toast
 import me.jbusdriver.mvp.bean.*
 import me.jbusdriver.mvp.model.CollectModel
 
@@ -20,7 +20,7 @@ object LinkMenu {
             JBus.copy(movie.code)
             JBus.toast("已复制")
         }, "收藏" to { movie: Movie ->
-            CollectModel.addToCollect(movie.convertDBItem())
+            CollectModel.addToCollectForCategory(movie.convertDBItem())
         }, "取消收藏" to { movie: Movie ->
             CollectModel.removeCollect(movie.convertDBItem())
         })
@@ -32,7 +32,7 @@ object LinkMenu {
             JBus.copy(act.name)
             JBus.toast("已复制")
         }, "收藏" to { act: ActressInfo ->
-            CollectModel.addToCollect(act.convertDBItem())
+            CollectModel.addToCollectForCategory(act.convertDBItem())
         }, "取消收藏" to { act: ActressInfo ->
             CollectModel.removeCollect(act.convertDBItem())
         })
@@ -43,13 +43,14 @@ object LinkMenu {
     val linkActions by lazy {
         mapOf("复制" to { link: ILink ->
             KLog.d("copy $link ${link.des}")
-            JBus.copy(link.des.split(" ").last())
+            JBus.copy(link.des.substring(link.des.indexOf(" ").coerceAtLeast(0)))
             JBus.toast("已复制")
         }, "收藏" to { link ->
-            CollectModel.addToCollect(link.convertDBItem())
+            CollectModel.addToCollectForCategory(link.convertDBItem())
         }, "取消收藏" to { link ->
             CollectModel.removeCollect(link.convertDBItem())
         })
     }
+
 
 }

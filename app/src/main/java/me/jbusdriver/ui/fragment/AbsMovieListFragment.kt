@@ -11,7 +11,9 @@ import com.bumptech.glide.request.target.DrawableImageViewTarget
 import com.chad.library.adapter.base.BaseQuickAdapter
 import com.chad.library.adapter.base.BaseViewHolder
 import jbusdriver.me.jbusdriver.R
-import me.jbusdriver.common.*
+import me.jbusdriver.base.*
+import me.jbusdriver.base.common.C
+import me.jbusdriver.base.glide.toGlideNoHostUrl
 import me.jbusdriver.mvp.bean.ILink
 import me.jbusdriver.mvp.bean.Movie
 import me.jbusdriver.mvp.bean.convertDBItem
@@ -129,7 +131,7 @@ abstract class AbsMovieListFragment : LinkableListFragment<Movie>() {
                                 .setText(R.id.tv_movie_code, item.code)
 
 
-                        GlideApp.with(this@AbsMovieListFragment).load(item.imageUrl.toGlideUrl).placeholder(R.drawable.ic_place_holder)
+                        GlideApp.with(this@AbsMovieListFragment).load(item.imageUrl.toGlideNoHostUrl).placeholder(R.drawable.ic_place_holder)
                                 .error(R.drawable.ic_place_holder).centerCrop().into(DrawableImageViewTarget(holder.getView(R.id.iv_movie_img)))
 
 
@@ -154,9 +156,14 @@ abstract class AbsMovieListFragment : LinkableListFragment<Movie>() {
                             it.setOnLongClickListener {
                                 KLog.d("setOnItemLongClickListener $item")
 
-                                val action = if (CollectModel.has(item.convertDBItem())) LinkMenu.movieActions.minus("收藏")
-                                else LinkMenu.movieActions.minus("取消收藏")
-
+                                val action =( if (CollectModel.has(item.convertDBItem())) LinkMenu.movieActions.minus("收藏")
+                                else LinkMenu.movieActions.minus("取消收藏")).toMutableMap()
+                                if (AppConfiguration.enableCategory) {
+                                    val ac = action.remove("收藏")
+                                    if (ac != null) {
+                                        action["收藏到分类..."] = ac
+                                    }
+                                }
                                 MaterialDialog.Builder(viewContext).title(item.code)
                                         .content(item.title)
                                         .items(action.keys)
@@ -177,7 +184,7 @@ abstract class AbsMovieListFragment : LinkableListFragment<Movie>() {
                     when (it.itemType) {
                         -1 -> {
                             mBasePresenter?.currentPageInfo?.let {
-                                if (it.pages.isNotEmpty()) showPageDialog(it)
+                                if (it.referPages.isNotEmpty()) showPageDialog(it)
                             }
 
                         }
@@ -193,9 +200,6 @@ abstract class AbsMovieListFragment : LinkableListFragment<Movie>() {
     }
 
 
-
-
-
     override fun insertData(pos: Int, data: List<*>) {
         adapter.addData(pos, data as List<Movie>)
     }
@@ -204,7 +208,8 @@ abstract class AbsMovieListFragment : LinkableListFragment<Movie>() {
         layoutManager.scrollToPosition(adapter.getHeaderLayoutCount() + pos)
     }
 
-//    override fun toString(): String = "$type :" + super.toString()
+
+    //    override fun toString(): String = "$type :" + super.toString()
 
     companion object {
         const val MOVIE_LIST_DATA_TYPE = "movie:list:data:type"

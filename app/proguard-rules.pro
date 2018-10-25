@@ -167,9 +167,22 @@
      <init>(...);
 }
 #BaseRecyclerViewAdapterHelper end
+
+#BubbleSeekBar
 -keep class com.xw.repo.BubbleSeekBar {
 *;
 }
-#BubbleSeekBar
+#BubbleSeekBar end
 
-#END BubbleSeekBar
+#ImmersionBar
+ -keep class com.gyf.barlibrary.* {*;}
+#ImmersionBar end
+
+
+#hotfix
+-dontwarn com.tencent.bugly.**
+-keep public class com.tencent.bugly.**{*;}
+# tinker混淆规则
+-dontwarn com.tencent.tinker.**
+-keep class com.tencent.tinker.** { *; }
+#hotfix end

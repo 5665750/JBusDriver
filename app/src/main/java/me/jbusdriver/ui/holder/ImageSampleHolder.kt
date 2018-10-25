@@ -9,7 +9,11 @@ import com.bumptech.glide.request.target.DrawableImageViewTarget
 import com.chad.library.adapter.base.BaseViewHolder
 import jbusdriver.me.jbusdriver.R
 import kotlinx.android.synthetic.main.layout_detail_image_samples.view.*
-import me.jbusdriver.common.*
+import me.jbusdriver.base.GlideApp
+import me.jbusdriver.base.displayMetrics
+import me.jbusdriver.base.dpToPx
+import me.jbusdriver.base.inflate
+import me.jbusdriver.base.glide.toGlideNoHostUrl
 import me.jbusdriver.mvp.bean.ImageSample
 import me.jbusdriver.ui.activity.WatchLargeImageActivity
 import me.jbusdriver.ui.adapter.BaseAppAdapter
@@ -21,22 +25,33 @@ import me.jbusdriver.ui.adapter.GridSpacingItemDecoration
  */
 class ImageSampleHolder(context: Context) : BaseHolder(context) {
 
+    //cover
+    lateinit var cover: String
+
     val view by lazy {
         weakRef.get()?.let {
             it.inflate(R.layout.layout_detail_image_samples).apply {
-                val spanCount =  with(context.displayMetrics.widthPixels) {
+                val spanCount = with(context.displayMetrics.widthPixels) {
                     when {
                         this <= 1440 -> 3
                         else -> 4
                     }
                 }
-                rv_recycle_images.layoutManager = GridLayoutManager(it,spanCount)
+                rv_recycle_images.layoutManager = GridLayoutManager(it, spanCount)
                 rv_recycle_images.addItemDecoration(GridSpacingItemDecoration(spanCount, it.dpToPx(8f), false))
                 imageSampleAdapter.bindToRecyclerView(rv_recycle_images)
                 rv_recycle_images.isNestedScrollingEnabled = true
                 imageSampleAdapter.setOnItemClickListener { _, v, position ->
                     if (position < imageSampleAdapter.data.size) {
-                        WatchLargeImageActivity.startShow(v.context, imageSampleAdapter.data.map { if (TextUtils.isEmpty(it.image)) it.thumb else it.image }, position)
+                        val destination = arrayListOf<String>()
+                        var pos = position
+                        if (this@ImageSampleHolder::cover.isInitialized) {
+                            pos += 1
+                            destination.add(cover)
+
+                        }
+                        imageSampleAdapter.data.mapTo(destination) { if (TextUtils.isEmpty(it.image)) it.thumb else it.image }
+                        WatchLargeImageActivity.startShow(v.context, destination, pos)
                     }
                 }
             }
@@ -48,7 +63,7 @@ class ImageSampleHolder(context: Context) : BaseHolder(context) {
         override fun convert(holder: BaseViewHolder, item: ImageSample) {
             weakRef.get()?.apply {
                 holder.getView<ImageView>(R.id.iv_movie_thumb)?.let {
-                    GlideApp.with(this).load(item.thumb.toGlideUrl)
+                    GlideApp.with(this).load(item.thumb.toGlideNoHostUrl)
                             .fitCenter()
                             .placeholder(R.drawable.ic_child_care_black_24dp)
                             .error(R.drawable.ic_child_care_black_24dp)

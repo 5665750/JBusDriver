@@ -6,15 +6,12 @@ import android.content.Intent
 import android.os.Environment
 import com.google.gson.*
 import com.umeng.analytics.MobclickAgent
-import io.reactivex.android.schedulers.AndroidSchedulers
-import me.jbusdriver.common.*
+import me.jbusdriver.base.*
+import me.jbusdriver.common.JBus
 import me.jbusdriver.db.bean.LinkItem
 import me.jbusdriver.db.service.CategoryService
 import me.jbusdriver.db.service.LinkService
-import me.jbusdriver.mvp.bean.ActressInfo
-import me.jbusdriver.mvp.bean.ILink
-import me.jbusdriver.mvp.bean.Movie
-import me.jbusdriver.mvp.bean.convertDBItem
+import me.jbusdriver.mvp.bean.*
 import java.io.File
 import java.lang.reflect.Type
 
@@ -29,27 +26,56 @@ class CollectService : IntentService("CollectService") {
             when (intent.action) {
                 ACTION_COLLECT_MIGRATE -> handleMigrate()
                 ACTION_COLLECT_LOAD -> handleLoadBakUp(File(intent.getStringExtra(ACTION_COLLECT_LOAD)))
-            //  ACTION_COLLECT_BackUP -> handleBakUp(File(intent.getStringExtra(ACTION_COLLECT_BackUP)))
+                //  ACTION_COLLECT_BackUP -> handleBakUp(File(intent.getStringExtra(ACTION_COLLECT_BackUP)))
                 else -> Unit
             }
 
         }
     }
 
+    private lateinit var event: BackUpEvent
 
     private fun handleLoadBakUp(file: File) {
         if (!file.exists()) return
         try {
-            val backs = GSON.fromJson<List<LinkItem>>(file.readText())?.map {
-                if (it.categoryId < 0)  return@map it
-                if (CategoryService.getById(it.categoryId) == null) {
-                    it.getLinkValue().convertDBItem()
-                } else it
-            } ?: emptyList()
-            LinkService.saveOrUpdate(backs.asReversed())
-            toastForMain("恢复备份成功")
+            val all = GSON.fromJson<List<LinkItem>>(file.readText()) ?: emptyList()
+            if (all.isEmpty()) {
+                applicationContext.toast("没有要备份的内容！")
+                return
+            }
+            val s = all.size
+            event = BackUpEvent(file.absolutePath, s, 1)
+            RxBus.post(event)
+            val backs = all.asReversed().mapIndexed { index, linkItem ->
+                KLog.d("mapIndexed $index $linkItem")
+                if (linkItem.categoryId < 0) return@mapIndexed linkItem
+                val item: LinkItem
+                try {
+                    item = if (CategoryService.getById(linkItem.categoryId) == null) {
+                        linkItem.getLinkValue().convertDBItem()
+                    } else linkItem
+
+                    LinkService.saveOrUpdate(item)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    LinkService.saveOrUpdate(linkItem)
+                    return@mapIndexed linkItem
+                }
+
+                RxBus.post(event.apply {
+                    this.total = s
+                    this.index = index + 1
+                })
+                return@mapIndexed item
+            }
+
+            applicationContext.toast("恢复备份成功")
+            RxBus.post(event.copy(total = s, index = s))
         } catch (e: Exception) {
-            toastForMain("恢复失败,请重新打开app")
+            e.printStackTrace()
+            MobclickAgent.reportError(this@CollectService, e)
+            applicationContext.toast("恢复失败,请重新打开app")
+            RxBus.post(event.copy(total = 0, index = 0))
         }
 
     }
@@ -98,12 +124,6 @@ class CollectService : IntentService("CollectService") {
     }
 
 
-    private fun toastForMain(string: String) {
-        AndroidSchedulers.mainThread().scheduleDirect {
-            applicationContext.toast(string)
-        }
-    }
-
     companion object {
 
         private const val ACTION_COLLECT_MIGRATE = "me.jbusdriver.ui.task.action.Collect_Migrate"
@@ -114,7 +134,7 @@ class CollectService : IntentService("CollectService") {
             context.startService(intent)
         }
 
-        fun startLoadBackUp(context: Context, file: File) {
+        fun startLoadBackUp(context: Context, file: File, callBack: ((Int, Int) -> Unit)? = null) {
             val intent = Intent(context, CollectService::class.java)
             intent.action = ACTION_COLLECT_LOAD
             intent.putExtra(ACTION_COLLECT_LOAD, file.absolutePath)
@@ -122,16 +142,6 @@ class CollectService : IntentService("CollectService") {
         }
     }
 
-    override fun onCreate() {
-        KLog.t("CollectService").e(" before onCreate")
-        super.onCreate()
-        KLog.t("CollectService").e("onCreate")
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        KLog.t("CollectService").e("onDestroy")
-    }
 }
 
 

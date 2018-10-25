@@ -23,7 +23,9 @@ import io.reactivex.schedulers.Schedulers
 import jbusdriver.me.jbusdriver.BuildConfig
 import jbusdriver.me.jbusdriver.R
 import kotlinx.android.synthetic.main.nav_header_main.view.*
-import me.jbusdriver.common.*
+import me.jbusdriver.base.*
+import me.jbusdriver.base.common.AppBaseActivity
+import me.jbusdriver.common.JBus
 import me.jbusdriver.mvp.MainContract
 import me.jbusdriver.mvp.bean.*
 import me.jbusdriver.mvp.presenter.MainPresenterImpl
@@ -42,6 +44,7 @@ class MainActivity : AppBaseActivity<MainContract.MainPresenter, MainContract.Ma
         initNavigationView()
         initFragments()
     }
+
     private fun bindRx() {
         RxBus.toFlowable(MenuChangeEvent::class.java)
                 .delay(100, TimeUnit.MILLISECONDS) //稍微延迟,否则设置可能没有完成
@@ -92,7 +95,7 @@ class MainActivity : AppBaseActivity<MainContract.MainPresenter, MainContract.Ma
             ll_click_reload.setOnClickListener {
                 CacheLoader.lru.evictAll()
                 CacheLoader.acache.clear()
-                AppContext.JBusInstances.clear()
+                JBus.JBusServices.clear()
                 SplashActivity.start(this@MainActivity)
                 finish()
             }

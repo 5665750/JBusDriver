@@ -1,23 +1,25 @@
 {
   "backUp": [
-    "https://www.javbus6.pw",
-    "https://www.javbus.us",
-    "https://www.javbus2.pw"
+    "https://www.seedmm.net",
+    "https://www.busjav.net",
+    "https://www.buscdn.net",
+    "https://www.xwb2uooia5o59avwxb.com",
+    "https://www.javbus.com",
+    "https://www.busdmm.net",
+    "https://www.dmmsee.net",
+    "https://www.busjav.cc"
   ],
+  "xyz":"https://www.javbus.work",
   "update": {
-    "versionCode": 191,
-    "versionName": "1.2.2",
-    "url": "http://git.oschina.net/751762476/jbusfile/raw/master/JubsDriver_v1.2.2build327.apk",
-    "desc": "JBusDriver 1.2.2 已更新!
-1.BTSO.PW磁力站点已经恢复,现已重新加入.
-2.跳页模式下,添加跳页菜单,跳页选择模式优化.
-3.现在抽屉菜单与配置项属性一致.
-4.优化样本图片放大后,图片与换页的冲突.添加样本图片加载进度.
-5.优化屏幕旋转/分屏的加载.
+    "versionCode": 282,
+    "versionName": "1.2.12",
+    "url": "https://raw.githubusercontent.com/Ccixyj/jbusfile/master/JubsDriver_v1.2.12build463.apk",
+    "desc": "JBusDriver 1.2.12 更新!
+1.修复欧美数据源问题
 "
   },
   "notice": {
     "id": 0,
-    "content": "简易磁力可能失效,神器磁力还是可以使用的."
+    "content": "网站被gfw了，翻墙试试。"
   }
 }

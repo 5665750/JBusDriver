@@ -1,40 +1,30 @@
 package me.jbusdriver.common
 
-import android.app.Application
-import com.google.gson.GsonBuilder
-import com.google.gson.JsonDeserializer
 import com.orhanobut.logger.AndroidLogAdapter
 import com.orhanobut.logger.Logger
 import com.orhanobut.logger.PrettyFormatStrategy
 import com.squareup.leakcanary.LeakCanary
+import com.tencent.tinker.loader.app.TinkerApplication
+import com.tencent.tinker.loader.shareutil.ShareConstants
 import com.umeng.analytics.MobclickAgent
 import io.reactivex.plugins.RxJavaPlugins
 import jbusdriver.me.jbusdriver.BuildConfig
+import me.jbusdriver.base.JBusManager
+import me.jbusdriver.base.arrayMapof
 import me.jbusdriver.debug.stetho.initializeStetho
 import me.jbusdriver.http.JAVBusService
-import java.lang.reflect.Modifier.TRANSIENT
 
 
 lateinit var JBus: AppContext
 
-val GSON by lazy {
-    GsonBuilder().excludeFieldsWithModifiers(TRANSIENT).registerTypeAdapter(Int::class.java, JsonDeserializer<Int> { json, _, _ ->
-        if (json.isJsonNull || json.asString.isEmpty()) {
-            return@JsonDeserializer null
-        }
-        try {
-            return@JsonDeserializer json.asInt
-        } catch (e: NumberFormatException) {
-            return@JsonDeserializer null
-        }
-    }).serializeNulls().create()
-}
 
-class AppContext : Application() {
+class AppContext : TinkerApplication(ShareConstants.TINKER_ENABLE_ALL, "me.jbusdriver.common.JBusApplicationLike",
+        "com.tencent.tinker.loader.TinkerLoader", false) {
+
+    val JBusServices by lazy { arrayMapof<String, JAVBusService>() }
 
     override fun onCreate() {
         super.onCreate()
-        JBus = this
 
         if (LeakCanary.isInAnalyzerProcess(this)) {
             // This process is dedicated to LeakCanary for heap analysis.
@@ -63,13 +53,28 @@ class AppContext : Application() {
         MobclickAgent.setDebugMode(BuildConfig.DEBUG)
 
         RxJavaPlugins.setErrorHandler {
-            if (!BuildConfig.DEBUG) MobclickAgent.reportError(this, it)
+            try {
+                if (!BuildConfig.DEBUG) MobclickAgent.reportError(this, it)
+            } catch (e: Exception) {
+                //ignore  report error
+            }
         }
+
+        JBus = this
+        JBusManager.setContext(this)
+        this.registerActivityLifecycleCallbacks(JBusManager)
     }
 
 
-    companion object {
-
-        val JBusInstances by lazy { arrayMapof<String, JAVBusService>() }
+    override fun onLowMemory() {
+        super.onLowMemory()
+        JBusServices.clear()
     }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        JBusServices.clear()
+    }
+
+
 }

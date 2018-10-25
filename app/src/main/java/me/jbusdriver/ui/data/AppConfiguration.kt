@@ -2,7 +2,11 @@ package me.jbusdriver.ui.data
 
 import android.content.Context
 import io.reactivex.schedulers.Schedulers
-import me.jbusdriver.common.*
+import me.jbusdriver.base.GSON
+import me.jbusdriver.base.RxBus
+import me.jbusdriver.base.fromJson
+import me.jbusdriver.base.toJsonString
+import me.jbusdriver.common.JBus
 import me.jbusdriver.mvp.bean.CategoryChangeEvent
 import me.jbusdriver.mvp.bean.MenuChangeEvent
 import me.jbusdriver.mvp.bean.PageChangeEvent
@@ -72,8 +76,7 @@ object AppConfiguration {
     }
     //endregion
 
-    //region collectCategory
-
+    //region collectCategory 开启收藏分类
     private const val collectCategoryS: String = "collectCategoryS"
     var enableCategory: Boolean by Delegates.observable(java.lang.Boolean.parseBoolean(getSp(collectCategoryS))) { _, old, new ->
         saveSp(collectCategoryS, new.toString())

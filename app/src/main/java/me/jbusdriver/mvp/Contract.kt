@@ -1,7 +1,9 @@
 package me.jbusdriver.mvp
 
+import me.jbusdriver.base.mvp.BaseView
+import me.jbusdriver.base.mvp.presenter.BasePresenter
 import me.jbusdriver.mvp.bean.*
-import me.jbusdriver.mvp.presenter.BasePresenter
+import me.jbusdriver.mvp.presenter.BaseCollectPresenter
 import me.jbusdriver.ui.data.enums.DataSourceType
 
 /**
@@ -30,14 +32,15 @@ interface LinkListContract {
 
 interface MovieDetailContract {
     interface MovieDetailView : BaseView {
-        val movie: Movie
-        val detailMovieFromDisk: MovieDetail?
+        val movie: Movie?
+        val url: String?
 //        fun addMagnet(t: List<Magnet>)
 //        fun initMagnetLoad()
     }
 
     interface MovieDetailPresenter : BasePresenter<MovieDetailView>, BasePresenter.RefreshPresenter {
-        fun loadDetail()
+        fun loadDetail(url:String)
+
     }
 }
 
@@ -54,16 +57,16 @@ interface MineCollectContract {
 
 interface MovieCollectContract {
     interface MovieCollectView : BaseView.BaseListWithRefreshView
-    interface MovieCollectPresenter : BasePresenter.BaseRefreshLoadMorePresenter<MovieCollectView>, BasePresenter.BaseCollectPresenter<Movie>,BasePresenter.LazyLoaderPresenter
+    interface MovieCollectPresenter : BasePresenter.BaseRefreshLoadMorePresenter<MovieCollectView>, BaseCollectPresenter<Movie>, BasePresenter.LazyLoaderPresenter
 }
 interface ActressCollectContract {
     interface ActressCollectView : BaseView.BaseListWithRefreshView
-    interface ActressCollectPresenter : BasePresenter.BaseRefreshLoadMorePresenter<ActressCollectView>, BasePresenter.BaseCollectPresenter<ActressInfo>, BasePresenter.LazyLoaderPresenter
+    interface ActressCollectPresenter : BasePresenter.BaseRefreshLoadMorePresenter<ActressCollectView>,BaseCollectPresenter<ActressInfo>, BasePresenter.LazyLoaderPresenter
 }
 
 interface LinkCollectContract {
     interface LinkCollectView : BaseView.BaseListWithRefreshView
-    interface LinkCollectPresenter : BasePresenter.BaseRefreshLoadMorePresenter<LinkCollectView>, BasePresenter.BaseCollectPresenter<ILink>, BasePresenter.LazyLoaderPresenter
+    interface LinkCollectPresenter : BasePresenter.BaseRefreshLoadMorePresenter<LinkCollectView>, BaseCollectPresenter<ILink>, BasePresenter.LazyLoaderPresenter
 }
 
 interface GenrePageContract {
@@ -101,4 +104,9 @@ interface MagnetPagerContract {
 interface MagnetListContract {
     interface MagnetListView : BaseView.BaseListWithRefreshView
     interface MagnetListPresenter : BasePresenter.BaseRefreshLoadMorePresenter<MagnetListView>, BasePresenter.LazyLoaderPresenter
+}
+
+interface HotRecommendContract {
+    interface HotRecommendView : BaseView.BaseListWithRefreshView
+    interface HotRecommendPresenter :  BasePresenter.BaseRefreshLoadMorePresenter<HotRecommendView>
 }

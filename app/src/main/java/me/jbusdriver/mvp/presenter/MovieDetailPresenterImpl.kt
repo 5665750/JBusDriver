@@ -4,39 +4,35 @@ import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
 import io.reactivex.FlowableEmitter
 import io.reactivex.rxkotlin.addTo
-import me.jbusdriver.common.*
-import me.jbusdriver.db.bean.History
-import me.jbusdriver.db.service.HistoryService
+import me.jbusdriver.base.*
+import me.jbusdriver.base.mvp.model.AbstractBaseModel
+import me.jbusdriver.base.mvp.model.BaseModel
 import me.jbusdriver.http.JAVBusService
 import me.jbusdriver.mvp.MovieDetailContract
-import me.jbusdriver.mvp.bean.DBtype
+import me.jbusdriver.mvp.bean.Movie
 import me.jbusdriver.mvp.bean.MovieDetail
 import me.jbusdriver.mvp.bean.checkUrl
-import me.jbusdriver.mvp.bean.detailSaveKey
-import me.jbusdriver.mvp.model.AbstractBaseModel
-import me.jbusdriver.mvp.model.BaseModel
 import org.jsoup.Jsoup
-import java.util.*
 
 class MovieDetailPresenterImpl(private val fromHistory: Boolean) : BasePresenterImpl<MovieDetailContract.MovieDetailView>(), MovieDetailContract.MovieDetailPresenter {
 
 
     private val loadFromNet = { s: String ->
         KLog.d("request for : $s")
-        mView?.let { view ->
-            JAVBusService.INSTANCE.get(view.movie.link).addUserCase().map { MovieDetail.parseDetails(Jsoup.parse(it)) }
-                    .doOnNext { mView?.movie?.detailSaveKey?.let { key -> CacheLoader.cacheDisk(key to it) } }
-        } ?: Flowable.empty()
+        JAVBusService.INSTANCE.get(s).addUserCase().map { MovieDetail.parseDetails(Jsoup.parse(it)) }
+                .doOnNext { s.urlPath.let { key -> CacheLoader.cacheDisk(key to it) } }
+                ?: Flowable.empty()
     }
     val model: BaseModel<String, MovieDetail> = object : AbstractBaseModel<String, MovieDetail>(loadFromNet) {
         override fun requestFromCache(t: String): Flowable<MovieDetail> {
             val disk = Flowable.create({ emitter: FlowableEmitter<MovieDetail> ->
                 mView?.let { view ->
-                    CacheLoader.acache.getAsString(view.movie.detailSaveKey)?.let {
+                    val saveKey = t.urlPath
+                    CacheLoader.acache.getAsString(saveKey)?.let {
                         val old = GSON.fromJson<MovieDetail>(it)
                         val res = if (old != null && mView?.movie?.link?.endsWith("xyz") == false) {
                             val new = old.checkUrl(JAVBusService.defaultFastUrl)
-                            if (old != new) CacheLoader.cacheDisk(view.movie.detailSaveKey to new)
+                            if (old != new) CacheLoader.cacheDisk(saveKey to new)
                             new
                         } else old
                         emitter.onNext(res)
@@ -51,50 +47,53 @@ class MovieDetailPresenterImpl(private val fromHistory: Boolean) : BasePresenter
 
     override fun onFirstLoad() {
         super.onFirstLoad()
-        loadDetail()
-        mView?.movie?.let {
-            if (!fromHistory)
-                HistoryService.insert(History(it.DBtype, Date(), it.toJsonString()))
-        }
-
+        val fromUrl = mView?.movie?.link ?: mView?.url ?: error("need url info")
+        loadDetail(fromUrl)
     }
 
     override fun onRefresh() {
-        mView?.movie?.detailSaveKey?.let {
+        mView?.movie?.link?.let {
             //删除缓存和magnet缓存
-            CacheLoader.acache.remove(it)
-            CacheLoader.acache.remove(it + "_magnet")
+            CacheLoader.acache.remove(it.urlPath)
+            CacheLoader.acache.remove(it.urlPath + "_magnet")
             //重新加载
-            loadDetail()
+            loadDetail(it)
             //magnet 不要重新加载
         }
     }
 
-    override fun loadDetail() {
-        mView?.movie?.link?.let {
-            KLog.d("detail url :$it  , movie ${mView?.movie}")
-            model.requestFromCache(it).compose(SchedulersCompat.io())
-                    .compose(SchedulersCompat.io())
-                    .doOnTerminate { mView?.dismissLoading() }
-                    .subscribeWith(object : SimpleSubscriber<MovieDetail>() {
-                        override fun onStart() {
-                            super.onStart()
-                            mView?.showLoading()
-                        }
+    override fun loadDetail(url: String) {
+        model.requestFromCache(url).compose(SchedulersCompat.io())
+                .compose(SchedulersCompat.io())
+                .doOnTerminate { mView?.dismissLoading() }
+                .subscribeWith(object : SimpleSubscriber<MovieDetail>() {
+                    override fun onStart() {
+                        super.onStart()
+                        mView?.showLoading()
+                    }
 
-                        override fun onNext(t: MovieDetail) {
-                            super.onNext(t)
-                            mView?.showContent(t)
-                        }
-                    })
-                    .addTo(rxManager)
-        }
+                    override fun onNext(t: MovieDetail) {
+                        super.onNext(t)
+                        mView?.showContent(t.generateMovie(url))
+                        mView?.showContent(t)
+                    }
+                })
+                .addTo(rxManager)
 
     }
 
+    fun MovieDetail.generateMovie(url: String): Movie {
+        val code = headers.first().value.trim()
+        return Movie(title.replace(code, "", true).trim(), this.cover.replace("cover", "thumb").replace("_b", ""),
+                code, headers.component2().value, url)
+    }
+
+
     override fun restoreFromState() {
         super.restoreFromState()
-        loadDetail()
+        mView?.movie?.link?.let {
+            loadDetail(it)
+        }
     }
 
 }

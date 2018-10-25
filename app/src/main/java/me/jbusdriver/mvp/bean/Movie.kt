@@ -3,8 +3,12 @@ package me.jbusdriver.mvp.bean
 import android.text.TextUtils
 import com.chad.library.adapter.base.entity.MultiItemEntity
 import com.google.gson.annotations.SerializedName
-import me.jbusdriver.common.KLog
-import me.jbusdriver.common.urlHost
+import me.jbusdriver.base.ACache
+import me.jbusdriver.base.KLog
+import me.jbusdriver.base.toJsonString
+import me.jbusdriver.base.urlHost
+import me.jbusdriver.base.common.C
+import me.jbusdriver.base.CacheLoader
 import me.jbusdriver.db.bean.MovieCategory
 import me.jbusdriver.http.JAVBusService
 import org.jsoup.nodes.Document
@@ -42,22 +46,28 @@ data class Movie(
                 )
             }.apply {
 
-                        val host = this.firstOrNull()?.imageUrl?.urlHost ?: ""
-                        KLog.d("put defaultImageUrlHost  for movie $host ")
-                        if (host.isNotBlank()) {
-                            val key = if (host.endsWith("xyz")) "xyz" else "default"
-                            JAVBusService.defaultImageUrlHosts[key] = host
-                        }
-
+                val host = this.firstOrNull()?.imageUrl?.urlHost ?: ""
+                KLog.d("put defaultImageUrlHost  for movie $host ")
+                if (host.isNotBlank()) {
+                    val key = if (host.endsWith("xyz")) "xyz" else "default"
+                    val set = JAVBusService.defaultImageUrlHosts.getOrPut(key) {
+                       hashSetOf()
                     }
+                    if (host !in set) {
+                        set.add(host)
+                        CacheLoader.acache.put(C.Cache.IMG_HOSTS, JAVBusService.defaultImageUrlHosts.toJsonString(), ACache.TIME_DAY)
+                    }
+                }
+
+            }
         }
 
         fun newPageMovie(page: Int, pages: List<Int>) = Movie(page.toString(), pages.joinToString("#"), "", "", "")
     }
 }
 
-val Movie.detailSaveKey
-    inline get() = code + "_" + date
+val Movie.saveKey
+    inline get() = code.trim() + "_" + date.trim()
 
 private val Movie.isInValid
     inline get() = TextUtils.isEmpty(code) && TextUtils.isEmpty(link)

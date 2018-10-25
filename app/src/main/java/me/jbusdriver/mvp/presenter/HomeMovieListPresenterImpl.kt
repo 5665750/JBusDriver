@@ -2,13 +2,16 @@ package me.jbusdriver.mvp.presenter
 
 import android.support.v4.util.ArrayMap
 import io.reactivex.Flowable
-import me.jbusdriver.common.*
+import me.jbusdriver.base.*
+import me.jbusdriver.base.common.C
+import me.jbusdriver.base.CacheLoader
 import me.jbusdriver.http.JAVBusService
 import me.jbusdriver.mvp.bean.ILink
 import me.jbusdriver.mvp.bean.Movie
+import me.jbusdriver.mvp.bean.PageInfo
 import me.jbusdriver.mvp.bean.PageLink
-import me.jbusdriver.mvp.model.AbstractBaseModel
-import me.jbusdriver.mvp.model.BaseModel
+import me.jbusdriver.base.mvp.model.AbstractBaseModel
+import me.jbusdriver.base.mvp.model.BaseModel
 import me.jbusdriver.ui.data.AppConfiguration
 import me.jbusdriver.ui.data.enums.DataSourceType
 import org.jsoup.Jsoup
@@ -40,7 +43,7 @@ open class HomeMovieListPresenterImpl(val type: DataSourceType, val link: ILink)
         val pageLink = PageLink(page = page, title = type.key, link = urlN)
         addHistory(pageLink)
         service.get(urlN, if (IsAll) "all" else null).addUserCase().doOnNext {
-            if (page == 1) CacheLoader.lru.put(saveKey, it)
+            if (page == 1 && !it.isNullOrBlank()) CacheLoader.lru.put(saveKey, it!!)
         }.map { Jsoup.parse(it) }.doOnError {
             //可能网址被封
             CacheLoader.acache.remove(C.Cache.BUS_URLS)
@@ -54,10 +57,10 @@ open class HomeMovieListPresenterImpl(val type: DataSourceType, val link: ILink)
     }
 
 
-    override fun stringMap(str: Document) = Movie.loadFromDoc( str).let {
+    override fun stringMap(page: PageInfo, str: Document) = Movie.loadFromDoc(str).let {
         when (mView?.pageMode) {
             AppConfiguration.PageMode.Page -> {
-                listOf(Movie.newPageMovie(pageInfo.activePage, pageInfo.pages)) + it
+                listOf(Movie.newPageMovie(page.activePage, page.referPages)) + it
             }
             else -> it
         }

@@ -1,11 +1,10 @@
 package me.jbusdriver.mvp.bean
 
 import android.text.TextUtils
-import me.jbusdriver.common.KLog
-import me.jbusdriver.common.urlHost
+import me.jbusdriver.base.KLog
+import me.jbusdriver.base.urlHost
 import me.jbusdriver.db.bean.ActressCategory
 import me.jbusdriver.db.bean.LinkCategory
-import me.jbusdriver.ui.data.enums.DataSourceType
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.Serializable
@@ -32,6 +31,9 @@ data class MovieDetail(val title: String,
         //  val magnets: MutableList<Magnet> = mutableListOf() //磁力链接
 ) {
     companion object {
+
+
+
         fun parseDetails(doc: Document): MovieDetail {
             KLog.d("start parseDetails ")
             val roeMovie = doc.select("[class=row movie]")
@@ -44,16 +46,16 @@ data class MovieDetail(val title: String,
             headersContainer.select("p[class!=star-show]:has(span:not([class=genre])):not(:has(a))")
                     .mapTo(headers) {
                         val split = it.text().split(":")
-                        Header(split.first(), split.getOrNull(1) ?: "", "")
+                        Header(split.first(), split.getOrNull(1)?.trim() ?: "", "")
                     } //解析普通信息
 
-            val content = doc.select("[name=description]").attr("content")
+            val content = doc.select("[name=description]").attr("content")?.trim() ?: ""
             headers.add(Header("描述", content, ""))
 
             headersContainer.select("p[class!=star-show]:has(span:not([class=genre])):has(a)")
                     .mapTo(headers) {
                         val split = it.text().split(":")
-                        Header(split.first(), split.getOrNull(1)
+                        Header(split.first(), split.getOrNull(1)?.trim()
                                 ?: "", it.select("p a").attr("href"))
                     }//解析附带跳转信息
 

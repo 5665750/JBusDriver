@@ -14,7 +14,11 @@ import jbusdriver.me.jbusdriver.R
 import kotlinx.android.synthetic.main.layout_menu_op_head.view.*
 import kotlinx.android.synthetic.main.layout_recycle.*
 import kotlinx.android.synthetic.main.layout_swipe_recycle.*
-import me.jbusdriver.common.*
+import me.jbusdriver.base.GlideApp
+import me.jbusdriver.base.KLog
+import me.jbusdriver.base.common.AppBaseRecycleFragment
+import me.jbusdriver.base.toast
+import me.jbusdriver.base.glide.toGlideNoHostUrl
 import me.jbusdriver.db.bean.Category
 import me.jbusdriver.db.bean.MovieCategory
 import me.jbusdriver.db.service.CategoryService
@@ -50,7 +54,7 @@ class MovieCollectFragment : AppBaseRecycleFragment<MovieCollectContract.MovieCo
                                 .setText(R.id.tv_movie_date, movie.date)
                                 .setText(R.id.tv_movie_code, movie.code)
 
-                        GlideApp.with(viewContext).load(movie.imageUrl.toGlideUrl).placeholder(R.drawable.ic_place_holder)
+                        GlideApp.with(viewContext).load(movie.imageUrl.toGlideNoHostUrl).placeholder(R.drawable.ic_place_holder)
                                 .error(R.drawable.ic_place_holder).centerCrop().into(DrawableImageViewTarget(holder.getView(R.id.iv_movie_img)))
 
                         holder.getView<View>(R.id.card_movie_item)?.setOnClickListener {
@@ -89,7 +93,7 @@ class MovieCollectFragment : AppBaseRecycleFragment<MovieCollectContract.MovieCo
                             val all = mBasePresenter?.collectGroupMap?.keys ?: emptyList<Category>()
                             val last = all - category
                             if (last.isNotEmpty()) {
-                                action.put("移到分类...", { link ->
+                                action.put("移到分类...") { link ->
                                     KLog.d("移到分类 : $last")
                                     MaterialDialog.Builder(viewContext).title("选择目录")
                                             .items(last.map { it.name })
@@ -101,7 +105,7 @@ class MovieCollectFragment : AppBaseRecycleFragment<MovieCollectContract.MovieCo
                                                 }
                                                 return@itemsCallbackSingleChoice true
                                             }.show()
-                                })
+                                }
                             }
                         }
                     }

@@ -7,19 +7,29 @@ import android.support.v7.widget.RecyclerView
 import com.afollestad.materialdialogs.MaterialDialog
 import com.chad.library.adapter.base.BaseQuickAdapter
 import com.chad.library.adapter.base.BaseViewHolder
+import io.reactivex.Flowable
+import io.reactivex.rxkotlin.addTo
+import io.reactivex.rxkotlin.subscribeBy
 import jbusdriver.me.jbusdriver.R
 import kotlinx.android.synthetic.main.layout_recycle.*
 import kotlinx.android.synthetic.main.layout_swipe_recycle.*
-import me.jbusdriver.common.*
+import me.jbusdriver.base.*
+import me.jbusdriver.base.common.AppBaseRecycleFragment
+import me.jbusdriver.base.common.C
 import me.jbusdriver.mvp.MagnetListContract
 import me.jbusdriver.mvp.bean.Magnet
 import me.jbusdriver.mvp.presenter.MagnetListPresenterImpl
 import me.jbusdriver.ui.adapter.BaseAppAdapter
+import me.jbusdriver.ui.data.magnet.MagnetFormatPrefix
+import org.jsoup.Jsoup
 
 class MagnetListFragment : AppBaseRecycleFragment<MagnetListContract.MagnetListPresenter, MagnetListContract.MagnetListView, Magnet>(), MagnetListContract.MagnetListView {
 
     private val keyword by lazy { arguments?.getString(C.BundleKey.Key_1) ?: error("need keyword") }
-    private val magnetLoaderKey by lazy { arguments?.getString(C.BundleKey.Key_2) ?: error("need magnet loaderKey") }
+    private val magnetLoaderKey by lazy {
+        arguments?.getString(C.BundleKey.Key_2) ?: error("need magnet loaderKey")
+    }
+
     override fun createPresenter() = MagnetListPresenterImpl(magnetLoaderKey, keyword)
 
     override val layoutId: Int = R.layout.layout_swipe_recycle
@@ -41,13 +51,31 @@ class MagnetListFragment : AppBaseRecycleFragment<MagnetListContract.MagnetListP
             }
 
         }.apply {
+
+            fun tryGetMagnet(url: String): Flowable<String> {
+                return Flowable.just(url).flatMap { url ->
+                    if (url.startsWith(MagnetFormatPrefix)) {
+                        Flowable.just(url)
+                    } else {
+                        Flowable.fromCallable { Jsoup.connect(url).get().select(".content .magnet").text().trim() }
+                                .addUserCase(sec = 6)
+                                .onErrorReturn { url }
+                    }
+                }
+            }
+
             setOnItemClickListener { adapter, _, position ->
                 (adapter.data.getOrNull(position) as? Magnet)?.let { magnet ->
                     KLog.d("setOnItemClickListener $magnet")
                     showMagnetLoading()
-                    viewContext.browse(magnet.link) {
-                        placeDialogHolder?.dismiss()
-                    }
+                    tryGetMagnet(magnet.link)
+                            .compose(SchedulersCompat.io()).subscribeBy {
+                                this@MagnetListFragment.adapter.setData(position, magnet.copy(link = it))
+                                viewContext.browse(it) {
+                                    placeDialogHolder?.dismiss()
+                                }
+                            }.addTo(rxManager)
+
                 }
 
             }
@@ -56,11 +84,16 @@ class MagnetListFragment : AppBaseRecycleFragment<MagnetListContract.MagnetListP
                 (adapter.data.getOrNull(position) as? Magnet)?.let { magnet ->
                     when (view.id) {
                         R.id.iv_magnet_copy -> {
-                            KLog.d("copy $magnet")
-                            view.context.apply {
-                                copy(magnet.link)
-                                toast("复制成功")
-                            }
+
+                            tryGetMagnet(magnet.link).compose(SchedulersCompat.io()).subscribeBy { url->
+                                this@MagnetListFragment.adapter.setData(position, magnet.copy(link = url))
+                                view.context.apply {
+                                    copy(url)
+                                    toast("复制成功")
+                                }
+                                KLog.d("copy value : ${view.context.paste()}")
+                            }.addTo(rxManager)
+
 
                         }
                         else -> Unit

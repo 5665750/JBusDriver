@@ -2,7 +2,7 @@ package me.jbusdriver.db.service
 
 import android.text.TextUtils
 import io.reactivex.Observable
-import me.jbusdriver.common.KLog
+import me.jbusdriver.base.KLog
 import me.jbusdriver.db.DB
 import me.jbusdriver.db.bean.Category
 import me.jbusdriver.db.bean.DBPage
@@ -140,9 +140,20 @@ object LinkService {
     fun queryAll() = dao.listAll()
     fun saveOrUpdate(backs: List<LinkItem>) {
         backs.forEach {
-            dao.insert(it) ?: dao.update(it)
+            val rowId = dao.insert(it) ?: -1
+            if (rowId < 0){
+                dao.update(it)
+            }
         }
     }
+
+    fun saveOrUpdate(back: LinkItem) {
+        val rowId = dao.insert(back) ?: -1
+        if (rowId < 0){
+            dao.update(back)
+        }
+    }
+
 
     fun hasByKey(data: LinkItem) = dao.hasByKey(data)
 }

@@ -3,9 +3,9 @@ package me.jbusdriver.db.dao
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import com.squareup.sqlbrite3.BriteDatabase
-import me.jbusdriver.common.KLog
-import me.jbusdriver.common.getIntByColumn
-import me.jbusdriver.common.getStringByColumn
+import me.jbusdriver.base.KLog
+import me.jbusdriver.base.getIntByColumn
+import me.jbusdriver.base.getStringByColumn
 import me.jbusdriver.db.CategoryTable
 import me.jbusdriver.db.bean.Category
 import java.util.concurrent.TimeUnit
@@ -27,13 +27,28 @@ class CategoryDao(private val db: BriteDatabase) {
         -1L
     }
 
+    @Throws
     fun delete(category: Category) {
-        ioBlock { db.delete(CategoryTable.TABLE_NAME, "${CategoryTable.COLUMN_ID} = ? ", category.id.toString()) }
+        TryIgnoreEx {
+            ioBlock { db.delete(CategoryTable.TABLE_NAME, "${CategoryTable.COLUMN_ID} = ? ", category.id.toString()) }
+        }
     }
 
-    fun findById(cId: Int): Category {
-        return db.createQuery(CategoryTable.TABLE_NAME, "select * from ${CategoryTable.TABLE_NAME}  where ${CategoryTable.COLUMN_ID} = ?", cId.toString())
-                .mapToOne { toCategory(it) }.timeout(3, TimeUnit.SECONDS).blockingFirst()
+    fun findById(cId: Int): Category? {
+        return db.query("select * from ${CategoryTable.TABLE_NAME}  where ${CategoryTable.COLUMN_ID} = ?", cId.toString())?.let {
+                KLog.d("cursor :$it")
+            if (it.moveToFirst()){
+                return  Category(it.getStringByColumn(CategoryTable.COLUMN_NAME)
+                        ?: "", it.getIntByColumn(CategoryTable.COLUMN_P_ID),
+                        it.getStringByColumn(CategoryTable.COLUMN_TREE) ?: ""
+                ).apply {
+                    id = it.getIntByColumn(CategoryTable.COLUMN_ID)
+                }
+
+            }
+            null
+        }
+
     }
 
     private fun toCategory(it: Cursor): Category {

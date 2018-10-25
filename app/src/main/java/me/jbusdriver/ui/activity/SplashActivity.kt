@@ -10,28 +10,37 @@ import com.tbruyelle.rxpermissions2.RxPermissions
 import com.umeng.analytics.MobclickAgent
 import io.reactivex.Flowable
 import io.reactivex.Observable
-import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.functions.BiFunction
 import io.reactivex.rxkotlin.addTo
 import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.schedulers.Schedulers
 import jbusdriver.me.jbusdriver.R
-import me.jbusdriver.common.*
+import me.jbusdriver.base.*
+import me.jbusdriver.base.common.BaseActivity
+import me.jbusdriver.base.common.C
 import me.jbusdriver.http.GitHub
 import me.jbusdriver.http.JAVBusService
 import me.jbusdriver.ui.data.enums.DataSourceType
 import me.jbusdriver.ui.task.CollectService
+import me.jbusdriver.ui.task.TrimLikeService
 import org.jsoup.Jsoup
 
 class SplashActivity : BaseActivity() {
 
     private var urls = arrayMapof<String, String>()
+    private var baseXyzUrl = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        immersionBar.transparentBar().init()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash)
         init()
         migrate()
+        trimLike()
+    }
+
+    private fun trimLike() {
+        TrimLikeService.startTrimSize(this)
     }
 
     private fun migrate() {
@@ -51,11 +60,11 @@ class SplashActivity : BaseActivity() {
                 .retry(1)
                 .doFinally {
                     KLog.d("doFinally")
-                    AndroidSchedulers.mainThread().scheduleDirect {
+                    postMain {
                         toast("load url : ${JAVBusService.defaultFastUrl}")
                         MainActivity.start(this)
                         finish()
-                    }
+                    }.addTo(rxManager)
                 }
                 .subscribeBy(onNext = {
                     KLog.w("initsuccess : $it")
@@ -83,9 +92,12 @@ class SplashActivity : BaseActivity() {
                     .map { source ->
                         //放入内存缓存,更新需要
                         KLog.d("load initUrls from urlsFromUpdateCache $source")
-                        CacheLoader.cacheLru(C.Cache.ANNOUNCE_VALUE to source)
+                        val r = GSON.fromJson<JsonObject>(source) ?: JsonObject()
+                        CacheLoader.cacheLru(C.Cache.ANNOUNCE_VALUE to r)
                         arrayMapof<String, String>().apply {
-                            val availableUrls = GSON.fromJson<JsonObject>(source)?.get("backUp")?.asJsonArray
+                            baseXyzUrl = r.get("xyz")?.asString?.removeSuffix("/").orEmpty()
+
+                            val availableUrls = r.get("backUp")?.asJsonArray
                             //赋值一个默认的(随机)
                             availableUrls?.let {
                                 it.mapNotNull { it.asString }.shuffled().firstOrNull()?.let {
@@ -126,9 +138,17 @@ class SplashActivity : BaseActivity() {
                         urls[DataSourceType.CENSORED.key] = it.first
 
                         //change xyz
-                        urls[DataSourceType.XYZ_ACTRESSES.key] = urls[DataSourceType.XYZ_ACTRESSES.key]?.replace("org", "xyz")
-                        urls[DataSourceType.XYZ.key] = urls[DataSourceType.XYZ.key]?.replace("org", "xyz")
-                        urls[DataSourceType.XYZ_GENRE.key] = urls[DataSourceType.XYZ_GENRE.key]?.replace("org", "xyz")
+                        if (baseXyzUrl.isNotBlank()) {
+                            urls[DataSourceType.XYZ.key] = baseXyzUrl
+                                urls[DataSourceType.XYZ_ACTRESSES.key] = "$baseXyzUrl/actresses"
+                            urls[DataSourceType.XYZ_GENRE.key] = "$baseXyzUrl/genre"
+                        } else {
+                            val baseUrlSuffix = urls[DataSourceType.XYZ.key]?.substringAfterLast(".").orEmpty()
+                            urls[DataSourceType.XYZ.key] = urls[DataSourceType.XYZ.key]?.replace(baseUrlSuffix, "xyz")
+                            urls[DataSourceType.XYZ_ACTRESSES.key] = urls[DataSourceType.XYZ_ACTRESSES.key]?.replace(baseUrlSuffix, "xyz")
+                            urls[DataSourceType.XYZ_GENRE.key] = urls[DataSourceType.XYZ_GENRE.key]?.replace(baseUrlSuffix, "xyz")
+                        }
+
 
 
                         CacheLoader.cacheLruAndDisk(C.Cache.BUS_URLS to urls, C.Cache.DAY * 2) //缓存所有的urls

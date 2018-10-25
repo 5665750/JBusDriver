@@ -1,7 +1,7 @@
 package  me.jbusdriver.ui.data.magnet
 
 import android.util.Base64
-import me.jbusdriver.common.KLog
+import me.jbusdriver.base.KLog
 import me.jbusdriver.mvp.bean.Magnet
 import org.jsoup.Jsoup
 
@@ -35,9 +35,14 @@ class BTSOWMagnetLoaderImpl : IMagnetLoader {
     override var hasNexPage: Boolean = true
 
     override fun loadMagnets(key: String, page: Int): List<Magnet> {
-        val doc = Jsoup.connect(search.format(key.trim(), page)).get()
-        hasNexPage = doc.select(".pagination").text().contains("next", true)
-        return doc.select(".btsowlist .row").map {
+        val url = search.format(key.trim(), page)
+        KLog.d("loadMagnets $url")
+        val doc = Jsoup.connect(url).get()
+        val dataNodes = doc.select(".btsowlist .row")
+        hasNexPage = (doc.select(".pagination a").lastOrNull()?.attr("href")?.split("/")
+                ?.lastOrNull { it.isNotBlank() && it.toIntOrNull() != null }?.toIntOrNull()
+                ?: -1) > 0
+        return dataNodes.map {
             val hrefNode = it.select("a")
             val childs = it.children()
             val size = childs.getOrNull(1)?.text() ?: "未知"
@@ -72,7 +77,7 @@ class BtanvMagnetLoaderImpl : IMagnetLoader {
 
 class BtdiggsMagnetLoaderImpl : IMagnetLoader {
     //  key -> page
-    private val search = "http://btdiggs.com/search/%s/%s/0/0.html"
+    private val search = "http://btdigg.cc/search/%s/%s/0/0.html"
 
     override var hasNexPage: Boolean = true
 
@@ -86,7 +91,8 @@ class BtdiggsMagnetLoaderImpl : IMagnetLoader {
             val href = it.select("dt a")
             val title = href.text()
             val labels = it.select(".attr span")
-            Magnet(title, labels.component2().text(), labels.component1().text(), labels.select("a").attr("href"))
+            Magnet(title, labels.component2().text(), labels.component1().text(),
+                    "http:" + href.attr("href"))
         }
 
     }

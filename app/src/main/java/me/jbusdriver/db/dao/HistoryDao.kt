@@ -5,9 +5,9 @@ import android.database.sqlite.SQLiteDatabase.CONFLICT_IGNORE
 import com.squareup.sqlbrite3.BriteDatabase
 import com.squareup.sqlbrite3.inTransaction
 import io.reactivex.Observable
-import me.jbusdriver.common.getIntByColumn
-import me.jbusdriver.common.getLongByColumn
-import me.jbusdriver.common.getStringByColumn
+import me.jbusdriver.base.getIntByColumn
+import me.jbusdriver.base.getLongByColumn
+import me.jbusdriver.base.getStringByColumn
 import me.jbusdriver.db.HistoryTable
 import me.jbusdriver.db.bean.History
 import java.util.*
@@ -19,7 +19,12 @@ import java.util.*
 class HistoryDao(private val db: BriteDatabase) {
 
 
-    fun insert(history: History) = ioBlock { db.insert(HistoryTable.TABLE_NAME, CONFLICT_IGNORE, history.cv(true)) }
+    fun insert(history: History) = try {
+        ioBlock { db.insert(HistoryTable.TABLE_NAME, CONFLICT_IGNORE, history.cv(true)) }
+    } catch (e: Exception) {
+        -1
+    }
+
 
     fun update(histories: List<History>) {
         db.inTransaction {
@@ -41,17 +46,20 @@ class HistoryDao(private val db: BriteDatabase) {
         }.flatMap { Observable.just(it) }
     }
 
-    val count: Int = db.query("select count(1) from ${HistoryTable.TABLE_NAME}").let {
-        if (it.moveToFirst()) {
-            it.getInt(0)
-        } else -1
-    }
+    val count: Int
+        get() = db.query("select count(1) from ${HistoryTable.TABLE_NAME}").let {
+            if (it.moveToFirst()) {
+                it.getInt(0)
+            } else -1
+        }
 
     fun deleteAndSetZero() {
-        ioBlock {
-            db.run {
-                delete(HistoryTable.TABLE_NAME, null)
-                execute("update sqlite_sequence SET seq = 0 where name = '${HistoryTable.TABLE_NAME}'")
+        TryIgnoreEx {
+            ioBlock {
+                db.run {
+                    delete(HistoryTable.TABLE_NAME, null)
+                    execute("update sqlite_sequence SET seq = 0 where name = '${HistoryTable.TABLE_NAME}'")
+                }
             }
         }
     }
@@ -67,6 +75,6 @@ class HistoryDao(private val db: BriteDatabase) {
         }
 
     }
-
-
 }
+
+

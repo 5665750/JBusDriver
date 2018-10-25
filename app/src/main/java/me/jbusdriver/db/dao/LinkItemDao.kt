@@ -5,10 +5,10 @@ import android.database.sqlite.SQLiteDatabase.CONFLICT_IGNORE
 import com.squareup.sqlbrite3.BriteDatabase
 import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
-import me.jbusdriver.common.KLog
-import me.jbusdriver.common.getIntByColumn
-import me.jbusdriver.common.getLongByColumn
-import me.jbusdriver.common.getStringByColumn
+import me.jbusdriver.base.KLog
+import me.jbusdriver.base.getIntByColumn
+import me.jbusdriver.base.getLongByColumn
+import me.jbusdriver.base.getStringByColumn
 import me.jbusdriver.db.LinkItemTable
 import me.jbusdriver.db.bean.LinkItem
 import java.util.*
@@ -39,7 +39,11 @@ class LinkItemDao(private val db: BriteDatabase) {
     }
 
 
-    fun delete(link: LinkItem) = ioBlock { db.delete(LinkItemTable.TABLE_NAME, "${LinkItemTable.COLUMN_DB_TYPE} = ? AND ${LinkItemTable.COLUMN_KEY} = ? ", link.type.toString(), link.key) > 0 }
+    fun delete(link: LinkItem) = try {
+        ioBlock { db.delete(LinkItemTable.TABLE_NAME, "${LinkItemTable.COLUMN_DB_TYPE} = ? AND ${LinkItemTable.COLUMN_KEY} = ? ", link.type.toString(), link.key) > 0 }
+    } catch (e: Exception) {
+        false
+    }
 
     fun listAll(): Flowable<List<LinkItem>> = db.createQuery(LinkItemTable.TABLE_NAME, "SELECT * FROM ${LinkItemTable.TABLE_NAME} ORDER BY ${LinkItemTable.COLUMN_ID} DESC").mapToList {
         LinkItem(it.getIntByColumn(LinkItemTable.COLUMN_DB_TYPE), Date(it.getLongByColumn(LinkItemTable.COLUMN_CREATE_TIME)),
